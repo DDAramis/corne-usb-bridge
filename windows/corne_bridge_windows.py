@@ -56,6 +56,16 @@ class WindowsBackend:
     def __init__(self):
         self.injected = Counter()
         self.lock = threading.Lock()
+        self._rgb = None
+    def rgb(self, name):                              # capa RGB por HID (experimental)
+        if self._rgb is None:
+            try:
+                import rgb as rgbmod
+                self._rgb = rgbmod.RGB(system=os.environ.get('CORNE_RGB', 'rgblight'))
+            except Exception as ex:
+                print('RGB no disponible:', ex); self._rgb = False
+        if self._rgb:
+            self._rgb.handle(name)
     def _emit(self, name, down):
         win = WIN.get(name)
         if not win:

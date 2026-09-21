@@ -1,8 +1,10 @@
 # rgb.py — control de RGB por HID (mismo canal que Vial), a las DOS mitades.
 # Protocolo tomado de vial-gui (editor/rgb_configurator.py, protocol/keyboard_comm.py).
-# EXPERIMENTAL: sin cable entre mitades, cada mitad tiene su RGB; esto manda la
-# misma orden a las dos para que vayan sincronizadas y para que la capa RGB del
-# teclado funcione en vivo a traves del puente.
+#
+# Compatible con Vial: abre y CIERRA el canal HID en cada orden, para no
+# retener el dispositivo. Asi el matrix tester y editar en Vial siguen funcionando
+# con el puente en marcha. Sin cable entre mitades cada una tiene su RGB; mandamos
+# la misma orden a las dos para que vayan sincronizadas.
 
 import glob
 import os
@@ -34,44 +36,21 @@ def _linux_nodes():
             nodes.append('/dev/' + os.path.basename(h))
     return nodes
 
-def _open_writers():
-    """Devuelve callables write(payload) para cada mitad. Linux: hidraw crudo."""
-    writers = []
-    for path in _linux_nodes():
-        try:
-            fd = os.open(path, os.O_RDWR)
-        except OSError:
-            continue
-        def make(fd):
-            def w(body):
-                buf = body + bytes(32 - len(body))
-                for b in (b'\x00' + buf, buf):
-                    try:
-                        os.write(fd, b); return
-                    except OSError:
-                        pass
-            return w
-        writers.append(make(fd))
-    if writers:
-        return writers
-    # Windows / otros: intentar hidapi
+def _win_paths():
     try:
         import hid
-        for d in hid.enumerate(VENDOR, 0):
-            if d.get('usage_page') == 0xFF60:
-                dev = hid.device(); dev.open_path(d['path'])
-                writers.append(lambda body, dev=dev: dev.write(b'\x00' + body + bytes(32 - len(body))))
     except Exception:
-        pass
-    return writers
+        return []
+    return [d['path'] for d in hid.enumerate(VENDOR, 0) if d.get('usage_page') == 0xFF60]
 
 def clamp(x):
     return max(0, min(255, x))
 
 class RGB:
     def __init__(self, system='rgblight'):
-        self.system = system            # 'rgblight' o 'vialrgb'
-        self.writers = _open_writers()
+        self.system = system            # 'rgblight' (underglow) o 'vialrgb' (matriz)
+        self.nodes = _linux_nodes()
+        self.win_paths = [] if self.nodes else _win_paths()
         self.enabled = True
         self.bright = 200
         self.hue = 0
@@ -80,9 +59,36 @@ class RGB:
         self.speed = 128
         self.apply()
 
+    @staticmethod
+    def _write(writer, body):
+        buf = body + bytes(32 - len(body))
+        for b in (b'\x00' + buf, buf):
+            try:
+                writer(b); return
+            except Exception:
+                pass
+
     def _send(self, body):
-        for w in self.writers:
-            w(body)
+        for path in self.nodes:                       # Linux: hidraw crudo, abrir/cerrar
+            try:
+                fd = os.open(path, os.O_RDWR)
+            except OSError:
+                continue
+            try:
+                self._write(lambda b: os.write(fd, b), body)
+            finally:
+                os.close(fd)
+        for path in self.win_paths:                   # Windows: hidapi, abrir/cerrar
+            try:
+                import hid
+                dev = hid.device(); dev.open_path(path)
+            except Exception:
+                continue
+            try:
+                self._write(dev.write, body)
+            finally:
+                try: dev.close()
+                except Exception: pass
 
     def apply(self):
         if self.system == 'vialrgb':
@@ -101,25 +107,25 @@ class RGB:
         """Aplica un keycode RGB_* del teclado."""
         if name == 'RGB_TOG':
             self.enabled = not self.enabled
-        elif name in ('RGB_VAI',):
+        elif name == 'RGB_VAI':
             self.bright = clamp(self.bright + 17)
-        elif name in ('RGB_VAD',):
+        elif name == 'RGB_VAD':
             self.bright = clamp(self.bright - 17)
-        elif name in ('RGB_HUI',):
+        elif name == 'RGB_HUI':
             self.hue = (self.hue + 17) % 256
-        elif name in ('RGB_HUD',):
+        elif name == 'RGB_HUD':
             self.hue = (self.hue - 17) % 256
-        elif name in ('RGB_SAI',):
+        elif name == 'RGB_SAI':
             self.sat = clamp(self.sat + 17)
-        elif name in ('RGB_SAD',):
+        elif name == 'RGB_SAD':
             self.sat = clamp(self.sat - 17)
-        elif name in ('RGB_SPI',):
+        elif name == 'RGB_SPI':
             self.speed = clamp(self.speed + 17)
-        elif name in ('RGB_SPD',):
+        elif name == 'RGB_SPD':
             self.speed = clamp(self.speed - 17)
-        elif name in ('RGB_MOD',):
+        elif name == 'RGB_MOD':
             self.effect += 1
-        elif name in ('RGB_RMOD',):
+        elif name == 'RGB_RMOD':
             self.effect = max(0, self.effect - 1)
         else:
             return
