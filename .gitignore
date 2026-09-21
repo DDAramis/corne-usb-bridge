@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.raw_left.vil
+*.raw_right.vil
+!keymaps/example_dvorak.raw_left.vil
+!keymaps/example_dvorak.raw_right.vil

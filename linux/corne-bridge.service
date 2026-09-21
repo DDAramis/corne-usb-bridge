@@ -1,0 +1,13 @@
+[Unit]
+Description=corne-usb-bridge (une las dos mitades de un teclado partido por USB)
+After=multi-user.target
+
+[Service]
+Type=simple
+# install.sh reescribe la ruta del --vil con tu keymap
+ExecStart=/usr/bin/python3 /opt/corne-usb-bridge/linux/corne_bridge_linux.py --vil /opt/corne-usb-bridge/keymaps/user.vil
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
