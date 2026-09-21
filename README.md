@@ -93,10 +93,11 @@ path (PRs welcome).
 powershell -ExecutionPolicy Bypass -File .\windows\install_autostart.ps1
 ```
 
-This registers a Scheduled Task that launches the bridge at logon with admin
-rights. Note: on Windows this covers the **desktop** (after your user logs in),
-not the Windows lock/login screen (session-0 isolation) — unlike Linux, which
-covers the greeter too.
+This installs the dependencies, registers a Scheduled Task that launches the
+bridge at every logon with admin rights, **and starts it immediately** (no
+reboot needed). Note: on Windows this covers the **desktop** (after your user
+logs in), not the Windows lock/login screen (session-0 isolation) — unlike
+Linux, which covers the greeter too.
 
 ## RGB / lights (experimental)
 
