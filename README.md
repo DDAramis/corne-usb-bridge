@@ -75,15 +75,27 @@ sudo python3 linux/corne_bridge_linux.py --vil keymaps/your.vil --test
 
 ## Install — Windows (experimental, untested on real hardware)
 
-```powershell
-pip install keyboard
-python make_raw_vil.py keymaps\your.vil       # generates the two raw .vil
-python windows\corne_bridge_windows.py --vil keymaps\your.vil    # run as Administrator
-```
+**Don't run it in a foreground terminal for daily use** — a plain
+`python …corne_bridge_windows.py` keeps running *inside* that terminal, so the
+window has to stay open **and** you can't type into that terminal (it's busy
+running the bridge). Run it **in the background** instead:
 
-Load the two generated raw `.vil` into each half with Vial, same as Linux. The
-Windows backend uses a global `keyboard` hook; it works because the two halves
-send distinct codes (`A..` vs `F1..`). For rock-solid per-device behavior the
+- **Recommended — install + auto-start (background, elevated):**
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\windows\install_autostart.ps1
+  ```
+- **Or start it in the background manually** (run the .bat as Administrator):
+  `windows\run_bridge.bat`  — stop it with `windows\stop_bridge.bat`.
+- **Foreground, only for diagnostics** (blocks the terminal, `Ctrl+C` to quit):
+  ```powershell
+  python windows\corne_bridge_windows.py --vil keymaps\example_dvorak.vil --test
+  ```
+
+Must run **as Administrator** (the global hook needs it to suppress/emit keys),
+with the OS keyboard layout set to the one your `.vil` targets. The Windows
+backend uses a global `keyboard` hook; it works because the two halves send
+distinct codes (`A..` vs `F1..`). For rock-solid behavior in every window
+(including elevated apps and consoles), the
 [Interception](https://github.com/oblitum/Interception) driver is the recommended
 path (PRs welcome).
 
