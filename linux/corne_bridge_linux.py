@@ -28,8 +28,18 @@ class LinuxBackend:
         for name in core.QMK2EV.values():
             caps.add(getattr(e, name))
         self.ui = UInput({e.EV_KEY: sorted(caps)}, name='corne-usb-bridge')
+        self._rgb = None
     def press(self, name):   self.ui.write(e.EV_KEY, getattr(e, name), 1); self.ui.syn()
     def release(self, name): self.ui.write(e.EV_KEY, getattr(e, name), 0); self.ui.syn()
+    def rgb(self, name):                              # capa RGB por HID (experimental)
+        if self._rgb is None:
+            try:
+                import rgb as rgbmod
+                self._rgb = rgbmod.RGB(system=os.environ.get('CORNE_RGB', 'rgblight'))
+            except Exception as ex:
+                print('RGB no disponible:', ex); self._rgb = False
+        if self._rgb:
+            self._rgb.handle(name)
     def close(self):         self.ui.close()
 
 def build_raw2pos(km):

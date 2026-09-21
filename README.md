@@ -87,6 +87,28 @@ send distinct codes (`A..` vs `F1..`). For rock-solid per-device behavior the
 [Interception](https://github.com/oblitum/Interception) driver is the recommended
 path (PRs welcome).
 
+**Auto-start on Windows** (equivalent to the systemd service) — run as Administrator:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\windows\install_autostart.ps1
+```
+
+This registers a Scheduled Task that launches the bridge at logon with admin
+rights. Note: on Windows this covers the **desktop** (after your user logs in),
+not the Windows lock/login screen (session-0 isolation) — unlike Linux, which
+covers the greeter too.
+
+## RGB / lights (experimental)
+
+The RGB layer keys (`RGB_TOG`, `RGB_HUI`, brightness, effect…) are sent to **both
+halves at once** over the same HID channel Vial uses, so the lights react live and
+stay in sync. Protocol taken from
+[vial-gui](https://github.com/vial-kb/vial-gui) (`editor/rgb_configurator.py`,
+`protocol/keyboard_comm.py`): `CMD_VIA_LIGHTING_SET_VALUE (0x07)` + QMK RGBLIGHT
+value ids (`0x80` brightness, `0x81` effect, `0x83` hue/sat), or VialRGB
+(`0x41 set mode`). Test which one your board uses with `sudo python3 rgb_test.py`.
+Set the system with `CORNE_RGB=rgblight|vialrgb`.
+
 ## Use your own keyboard / layout
 
 Point everything at your own `.vil`. The tool assumes a split whose matrix is
@@ -109,8 +131,11 @@ a container doesn't have — and Linux containers can't run the Windows backend.
 - While the bridge isn't running, the keyboard types the **raw codes** (letters/F).
   The service keeps it running; if you want the keyboard "native" again, reload
   your normal `.vil` (but then cross-half layers are gone).
-- **Per-half RGB is not synced** (no inter-half link). Set color/effect on each
-  half in Vial once; it persists in EEPROM.
+- **RGB** is driven over HID (see the RGB section) — experimental. If it does
+  nothing, your board may use a different lighting system; try `rgb_test.py`.
+- **USB-C cables:** each half needs a **data** USB-C cable, not a charge-only one.
+  A charge-only cable powers the LEDs but the PC won't detect the keyboard (it
+  won't show in `lsusb`). Any "sync & charge" / USB-2.0 data cable works.
 - Tap-hold resolves as *hold on other key press* (tune `TAPPING_TERM` in
   `bridge_core.py`).
 - The OS keyboard layout must stay the one your `.vil` was designed for.

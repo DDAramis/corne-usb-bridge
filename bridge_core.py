@@ -38,7 +38,8 @@ QMK2EV = {
     'KP_SLASH':'KEY_KPSLASH','KP_ENTER':'KEY_KPENTER','KP_DOT':'KEY_KPDOT',
 }
 MODS = {'LSHIFT','LGUI','LALT','RALT','LCTL','RSFT','RCTL','RGUI','RSHIFT'}
-IGNORE_PREFIX = ('RGB_', 'RGBLIGHT_', 'BL_')
+RGB_PREFIX = ('RGB_', 'RGBLIGHT_')      # se controlan por HID (ver rgb.py)
+IGNORE_PREFIX = ('BL_',)
 IGNORE = {'RESET', 'QK_BOOT', 'KC_NO', 'DB_TOGG', 'EE_CLR'}
 
 def name_of(kc):
@@ -49,6 +50,8 @@ def name_of(kc):
 
 def parse(s):
     """action string de Vial -> tupla canonica (con nombres KEY_*)."""
+    if s.startswith(RGB_PREFIX):
+        return ('rgb', s)
     if s in ('KC_NO', 'KC_NONE') or s in IGNORE or s.startswith(IGNORE_PREFIX):
         return ('none',)
     if s in ('KC_TRNS', 'KC_TRANSPARENT', '_______'):
@@ -162,6 +165,10 @@ class Engine:
         elif k == 'combo':
             self.backend.press(act[1]); self.backend.press(act[2])
             self.held[pos] = ('combo', act[1], act[2])
+        elif k == 'rgb':
+            rgb = getattr(self.backend, 'rgb', None)     # RGB por HID (opcional)
+            if rgb:
+                rgb(act[1])
 
     def key_up(self, pos):
         if pos in self.pending:
